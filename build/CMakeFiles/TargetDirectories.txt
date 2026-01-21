@@ -1,0 +1,5 @@
+/nhl_transformer/build/CMakeFiles/GetData.dir
+/nhl_transformer/build/CMakeFiles/edit_cache.dir
+/nhl_transformer/build/CMakeFiles/rebuild_cache.dir
+/nhl_transformer/build/_deps/json-build/CMakeFiles/edit_cache.dir
+/nhl_transformer/build/_deps/json-build/CMakeFiles/rebuild_cache.dir
