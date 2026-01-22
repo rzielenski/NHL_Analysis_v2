@@ -1,1 +1,0 @@
-/usr/bin/c++ CMakeFiles/GetData.dir/src/get_pbp_data.cpp.o -o GetData  /usr/lib/x86_64-linux-gnu/libcurl.so 

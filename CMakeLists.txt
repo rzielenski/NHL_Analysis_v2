@@ -11,9 +11,9 @@ FetchContent_MakeAvailable(json)
 
 find_package(CURL REQUIRED)
 add_executable(GetData src/get_pbp_data.cpp)
+
 target_link_libraries(GetData PRIVATE 
     nlohmann_json::nlohmann_json
 	CURL::libcurl	
 )
-
 
