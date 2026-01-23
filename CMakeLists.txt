@@ -17,3 +17,15 @@ target_link_libraries(GetData PRIVATE
 	CURL::libcurl	
 )
 
+add_executable(TensorTest 
+    src/tensor_test.cpp
+    src/tensor.cpp
+)
+target_include_directories(TensorTest PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+find_library(TCMALLOC_LIBRARIES NAMES tcmalloc_minimal)
+target_link_libraries(TensorTest PRIVATE 
+    ${TCMALLOC_LIBRARIES}
+)
+

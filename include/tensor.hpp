@@ -3,11 +3,12 @@
 #include <tuple>
 #include <initializer_list>
 #include <cstddef>
+#include <span>
 
 namespace hml::tensor {
     class tensor {
         public:
-            explicit tensor(std::span<const std::std::size_t> dims);
+            explicit tensor(std::span<const std::size_t> dims);
             tensor(std::initializer_list<std::size_t> args);
 
             tensor operator+(const tensor& x) const;
@@ -38,13 +39,17 @@ namespace hml::tensor {
             
             std::size_t ndim() const;
             std::size_t numel() const;
-            std::vector<std::size_t> get_shape() const;
-            std::vector<float> get_data() const;
+            const std::vector<std::size_t>& get_shape() const noexcept;
+            const std::vector<float>& get_data() const noexcept;
             bool is_contiguous() const;
-            
+
+            const float* data() const noexcept;
+            float* data() noexcept;
+            std::size_t size() const noexcept; 
         private:
                 std::vector<float> data_;
                 std::vector<std::size_t> shape_;
                 std::vector<std::size_t> strides_;
 
+    };
 }

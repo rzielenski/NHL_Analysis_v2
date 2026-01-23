@@ -8,7 +8,6 @@ namespace hml::tensor {
         if (dims.empty()) {
             throw std::invalid_argument("tensor: shape must have at least 1 dimension");
         }    
-        
         shape_.assign(dims.begin(), dims.end());
 
         std::size_t numel = 1;
@@ -155,15 +154,137 @@ namespace hml::tensor {
         return *this;
     }
 
-    tensor tensor::matmul(const tensor& x) const;
+    static std::size_t prod(const std::vector<std::size_t>& v, std::size_t start, std::size_t end){
+        std::size_t out = 1;
+        for (std::size_t i = start; i < end; i++) out *= v[i];
+        return out;
+    }
+
+    tensor tensor::matmul(const tensor& x) const {
+        if (!this->is_contiguous() || !x.is_contiguous())
+            throw std::invalid_argument("tensor: matmul requires contiguous tensors");
+
+        std::vector<std::size_t> a_shape = this->shape_;
+        std::vector<std::size_t> b_shape = x.shape_;
+
+        bool a_vec = false;
+        bool b_vec = false;
+
+        // Promote vectors to matrices
+        if (a_shape.size() == 1) {
+            a_vec = true;
+            a_shape = {1, a_shape[0]};      // [n] -> [1, n]
+        }
+        if (b_shape.size() == 1) {
+            b_vec = true;
+            b_shape = {b_shape[0], 1};      // [n] -> [n, 1]
+        }
+
+        if (a_shape.size() < 2 || b_shape.size() < 2)
+            throw std::invalid_argument("tensor: matmul requires tensors with ndim >= 1");
+
+        const std::size_t a_m = a_shape[a_shape.size() - 2];
+        const std::size_t a_n = a_shape[a_shape.size() - 1];
+        const std::size_t b_n = b_shape[b_shape.size() - 2];
+        const std::size_t b_p = b_shape[b_shape.size() - 1];
+
+        if (a_n != b_n)
+            throw std::invalid_argument("tensor: matmul requires [..., m, n] x [..., n, p]");
+
+        const std::size_t a_rest = a_shape.size() - 2;
+        const std::size_t b_rest = b_shape.size() - 2;
+
+        std::vector<std::size_t> a_batch_shape(a_shape.begin(), a_shape.begin() + a_rest);
+        std::vector<std::size_t> b_batch_shape(b_shape.begin(), b_shape.begin() + b_rest);
+
+        // Simple batching rule (same as your intent):
+        // - if both have batch dims, they must match exactly
+        // - else output batch shape is the one that exists
+        std::vector<std::size_t> out_batch_shape;
+        if (!a_batch_shape.empty() && !b_batch_shape.empty()) {
+            if (a_batch_shape != b_batch_shape)
+                throw std::invalid_argument("tensor: batch dimensions must match (no broadcasting yet)");
+            out_batch_shape = a_batch_shape;
+        } else if (!a_batch_shape.empty()) {
+            out_batch_shape = a_batch_shape;
+        } else {
+            out_batch_shape = b_batch_shape;
+        }
+
+        // Compute batch count
+        auto prod_no_overflow = [&](const std::vector<std::size_t>& v) {
+            std::size_t out = 1;
+            for (std::size_t d : v) out *= d;
+            return out;
+        };
+        const std::size_t batch_count = prod_no_overflow(out_batch_shape);
+
+        // Build output shape
+        std::vector<std::size_t> out_shape = out_batch_shape;
+        if (a_vec && b_vec) {
+            // dot product -> choose [1] or {} depending on your convention
+            out_shape = {1};
+        } else if (a_vec && !b_vec) {
+            out_shape.push_back(b_p);       // [p]
+        } else if (!a_vec && b_vec) {
+            out_shape.push_back(a_m);       // [m]
+        } else {
+            out_shape.push_back(a_m);
+            out_shape.push_back(b_p);
+        }
+
+        tensor out(std::span<const std::size_t>(out_shape.data(), out_shape.size()));
+
+        const std::size_t A_block = a_m * a_n;
+        const std::size_t B_block = a_n * b_p;
+
+        // If one side has no batch dims, reuse its single matrix each batch
+        const bool A_batched = !a_batch_shape.empty();
+        const bool B_batched = !b_batch_shape.empty();
+
+        const float* A = this->data_.data();
+        const float* B = x.data_.data();
+        float* C = out.data_.data();
+
+        // For output, if you returned [m] or [p] for vector-ish results,
+        // you still compute into an implicit [m,1] or [1,p] internally.
+        const std::size_t C_m = a_m;
+        const std::size_t C_p = b_p;
+        const std::size_t C_block = C_m * C_p;
+
+        for (std::size_t b = 0; b < batch_count; b++) {
+            const std::size_t a_b = A_batched ? b : 0;
+            const std::size_t b_b = B_batched ? b : 0;
+
+            const std::size_t a_base = a_b * A_block;
+            const std::size_t b_base = b_b * B_block;
+            const std::size_t c_base = b * C_block;
+
+            for (std::size_t i = 0; i < a_m; i++) {
+                for (std::size_t j = 0; j < b_p; j++) {
+                    float sum = 0.0f;
+                    for (std::size_t t = 0; t < a_n; t++) {
+                        sum += A[a_base + i * a_n + t] * B[b_base + t * b_p + j];
+                    }
+                    C[c_base + i * b_p + j] = sum;
+                }
+            }
+        }
+
+        return out;
+    }
 
 
     size_t tensor::ndim() const { return shape_.size(); } 
     size_t tensor::numel() const { return data_.size(); } 
 
-    const std::vector<size_t>& tensor::get_shape() const { return shape_; } 
-    const std::vector<float>& tensor::get_data() const { return data_; }
+    const std::vector<std::size_t>& tensor::get_shape() const noexcept { return shape_; } 
+    const std::vector<float>& tensor::get_data() const noexcept { return data_; }
     
+    const float* tensor::data() const noexcept { return data_.data(); }
+    float* tensor::data() noexcept { return data_.data(); }
+    std::size_t tensor::size() const noexcept { return data_.size(); }
+
     bool tensor::is_contiguous() const {
         if (this->shape_.empty()) { return true; }
         std::size_t expected = 1;
@@ -174,4 +295,4 @@ namespace hml::tensor {
         return true; 
     } 
 
-}
+};
