@@ -35,6 +35,8 @@ namespace hml::tensor {
             tensor& operator/=(const tensor& x);
             tensor& operator/=(float x);
 
+            tensor transpose() const;	
+
             tensor matmul(const tensor& x) const;
             
             std::size_t ndim() const;

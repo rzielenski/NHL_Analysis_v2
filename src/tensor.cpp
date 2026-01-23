@@ -154,6 +154,39 @@ namespace hml::tensor {
         return *this;
     }
 
+    tensor tensor::transpose() const {
+        if (this->shape_.size() < 2) throw std::invalid_argument("Can not transpose empty matrix");
+        else if (this->shape_.size() == 2) {
+            tensor res{this->shape_[1], this->shape_[0]};
+            for (std::size_t i = 0; i < this->shape_[0]; i++) {
+                for (std::size_t j = 0; j < this->shape_[1]; j++) {
+                    res.data_[j][i] = this->data_[i][j];
+                }   
+            }
+            return res;
+        }
+        else if {
+            std::vector<sdt::size_t> new_shape(this->shape_);
+            std::swap(new_shape[new_shape.size() - 2], new_shape[new_shape.size() - 1]);
+            tensor res{new_shape};
+            std::size_t num_matrices = 1;
+            for (std::size_t s = 0; s < res.shape_.size() - 2; s++){
+                num_matrices *=  s;
+            }
+            std::size_t m = this->shape_[this->shape_.size() - 2];
+            std::size_t n = this->shape_[this->shape_.size() - 2];
+            for (std::size_t m_i = 0; m_i < num_matrices; m_i++){
+                std::size_t offset = m_i * m * n;
+                for (std::size_t i = 0; i < m; i++) {
+                    for (std::size_t j = 0; j < n; j++){
+                        res.data_[offset + j*m + i] = this->data_[offset + i * n + j];
+                    }
+                }
+            } 
+            return res;
+        }
+    }
+
     static std::size_t prod(const std::vector<std::size_t>& v, std::size_t start, std::size_t end){
         std::size_t out = 1;
         for (std::size_t i = start; i < end; i++) out *= v[i];
@@ -179,7 +212,7 @@ namespace hml::tensor {
             b_vec = true;
             b_shape = {b_shape[0], 1};      // [n] -> [n, 1]
         }
-
+    
         if (a_shape.size() < 2 || b_shape.size() < 2)
             throw std::invalid_argument("tensor: matmul requires tensors with ndim >= 1");
 
