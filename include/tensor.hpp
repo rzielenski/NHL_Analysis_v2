@@ -8,6 +8,7 @@
 namespace hml::tensor {
     class tensor {
         public:
+            tensor() noexcept;
             explicit tensor(std::span<const std::size_t> dims);
             tensor(std::initializer_list<std::size_t> args);
 
@@ -48,6 +49,12 @@ namespace hml::tensor {
             const float* data() const noexcept;
             float* data() noexcept;
             std::size_t size() const noexcept; 
+
+            tensor& reshape(std::span<const std::size_t> dims);
+            tensor& unsqueeze(std::size_t axis);
+            tensor& squeeze(std::size_t axis);
+            tensor permute(std::span<const std::size_t> axes);
+
         private:
                 std::vector<float> data_;
                 std::vector<std::size_t> shape_;

@@ -4,6 +4,11 @@
 #include <limits>
 
 namespace hml::tensor {
+    tensor::tensor() noexcept {
+        shape_.clear();
+        strides_.clear();
+        data_.clear();
+    }
     tensor::tensor(std::span<const size_t> dims){
         if (dims.empty()) {
             throw std::invalid_argument("tensor: shape must have at least 1 dimension");
@@ -160,21 +165,21 @@ namespace hml::tensor {
             tensor res{this->shape_[1], this->shape_[0]};
             for (std::size_t i = 0; i < this->shape_[0]; i++) {
                 for (std::size_t j = 0; j < this->shape_[1]; j++) {
-                    res.data_[j][i] = this->data_[i][j];
+                    res.data_[j * res.shape_[1] + i] = this->data_[i * this->shape_[1] + j];
                 }   
             }
             return res;
         }
-        else if {
-            std::vector<sdt::size_t> new_shape(this->shape_);
+        else {
+            std::vector<std::size_t> new_shape(this->shape_);
             std::swap(new_shape[new_shape.size() - 2], new_shape[new_shape.size() - 1]);
             tensor res{new_shape};
             std::size_t num_matrices = 1;
             for (std::size_t s = 0; s < res.shape_.size() - 2; s++){
-                num_matrices *=  s;
+                num_matrices *=  res.shape_[s];
             }
             std::size_t m = this->shape_[this->shape_.size() - 2];
-            std::size_t n = this->shape_[this->shape_.size() - 2];
+            std::size_t n = this->shape_[this->shape_.size() - 1];
             for (std::size_t m_i = 0; m_i < num_matrices; m_i++){
                 std::size_t offset = m_i * m * n;
                 for (std::size_t i = 0; i < m; i++) {
@@ -307,9 +312,21 @@ namespace hml::tensor {
         return out;
     }
 
+    tensor& reshape(std::span<const std::size_t> dims){
+        std::size_t size = 1;
+        for (std::size_t i = 0; i < dims.size(); i++) { size *= dims[i]; }
+        if (size != this->size()) throw std::invalid_argument("Reshape must take same number of elements");
+        this->shape_ = dims;
+        this->strides_.back() = 1;
+        for (int i = static_cast<int>(this->shape_.size()) - 2; i >= 0; i--){
+            this->strides_[i] = this->strides_[i + 1] * this->shape_[i + 1];
+        }
+        return *this;
+    }
 
-    size_t tensor::ndim() const { return shape_.size(); } 
-    size_t tensor::numel() const { return data_.size(); } 
+   
+    std::size_t tensor::ndim() const { return shape_.size(); } 
+    std::size_t tensor::numel() const { return data_.size(); } 
 
     const std::vector<std::size_t>& tensor::get_shape() const noexcept { return shape_; } 
     const std::vector<float>& tensor::get_data() const noexcept { return data_; }
