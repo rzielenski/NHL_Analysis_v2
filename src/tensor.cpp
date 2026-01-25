@@ -313,8 +313,12 @@ namespace hml::tensor {
     }
 
     tensor& reshape(std::span<const std::size_t> dims){
+        if (dims.size() < 1) throw std::invalid argument("Invalid dimensions, length must be greater than 1");
         std::size_t size = 1;
-        for (std::size_t i = 0; i < dims.size(); i++) { size *= dims[i]; }
+        for (std::size_t i = 0; i < dims.size(); i++) { 
+            if (dims[i] < 1) throw std::invalid_argument("Invalid dimensions, each must be larger than 0"); 
+            size *= dims[i]; 
+        }
         if (size != this->size()) throw std::invalid_argument("Reshape must take same number of elements");
         this->shape_ = dims;
         this->strides_.back() = 1;
@@ -325,6 +329,16 @@ namespace hml::tensor {
     }
 
    
+    tensor unsqueeze(std::size_t dim) {
+        if (dim > this->shape_.size()) throw std::invalid_argument("Inalid dimension, must be within 1 of current dimension");
+        if (dim < 0) dim += (this->shape_.size() + 1); 
+        std::vector<std::size_t> new_shape = this->shape_;
+        tensor res = this;
+        res.shape_.insert(res.shape_.begin() + dim, 1);
+        return res;
+    }
+        
+
     std::size_t tensor::ndim() const { return shape_.size(); } 
     std::size_t tensor::numel() const { return data_.size(); } 
 

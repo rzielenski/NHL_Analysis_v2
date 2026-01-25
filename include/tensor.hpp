@@ -51,9 +51,9 @@ namespace hml::tensor {
             std::size_t size() const noexcept; 
 
             tensor& reshape(std::span<const std::size_t> dims);
-            tensor& unsqueeze(std::size_t axis);
-            tensor& squeeze(std::size_t axis);
-            tensor permute(std::span<const std::size_t> axes);
+            tensor unsqueeze(std::size_t axis);
+            tensor squeeze(std::size_t axis);
+            tensor& permute(std::span<const std::size_t> axes);
 
         private:
                 std::vector<float> data_;
